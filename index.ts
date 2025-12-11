@@ -5,30 +5,19 @@ require('dotenv').config();
 
 import { apiServer } from './src/api/APIServer';
 import logger from './src/utils/logger'; 
-// import { TradeLogger } from './src/utils/tradeLogger'; // BYPASSED to prevent synchronous FS/dependency crash
+// import { TradeLogger } from './src/utils/tradeLogger'; // BYPASSED for stability
 
 function initializeApp(): void {
     logger.info(`STARTUP: Attempting minimal server initialization.`);
     
-    // --- BYPASS: Commenting out the TradeLogger block entirely
-    /*
-    try {
-        const tradeLogger = new TradeLogger();
-        tradeLogger.printStatistics();
-    } catch (e) {
-        logger.error("FATAL: Failed to initialize TradeLogger.", e);
-        process.exit(1);
-    }
-    */
+    // --- BYPASS: TradeLogger initialization is skipped ---
     
     // 2. Start the API Server
     try {
-        // The APIServer constructor is now also minimal (see below)
         apiServer.start();
         
         logger.info('SERVER STATUS: APIServer start command issued successfully. Check /health endpoint.');
     } catch (e) {
-        // If this catch block executes, the failure is a fundamental Node/Express problem
         logger.error("FATAL: Server failed to start due to configuration or port issues.", e);
         process.exit(1);
     }
@@ -47,6 +36,10 @@ function setupShutdown(): void {
     process.on('SIGTERM', handleShutdown); 
     process.on('SIGINT', handleShutdown);
 }
+
+// Execute the application entry function
+initializeApp();
+setupShutdown();
 
 // Execute the application entry function
 initializeApp();
