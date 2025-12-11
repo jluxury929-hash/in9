@@ -1,58 +1,50 @@
 // index.ts
 
 // 🚨 CRITICAL FIX 1: Ensure environment variables are loaded FIRST.
-// This must be the first line to ensure configuration files (like config.ts)
-// have access to process.env variables (local or cloud-provided).
 require('dotenv').config();
 
 import { apiServer } from './src/api/APIServer';
-import { TradeLogger } from './src/utils/tradeLogger';
 import logger from './src/utils/logger'; 
-// import { apiServerWithBase44 } from './src/api/apiServerWithBase44'; // Uncomment if needed
+// import { TradeLogger } from './src/utils/tradeLogger'; // BYPASSED to prevent synchronous FS/dependency crash
 
-/**
- * Main application initializer function.
- */
 function initializeApp(): void {
-    logger.info(`Massive Trading Engine Initializing... NODE_ENV: ${process.env.NODE_ENV || 'development'}`);
+    logger.info(`STARTUP: Attempting minimal server initialization.`);
     
-    // 1. Initialize and Print Statistics (wrapped in try/catch for stability)
+    // --- BYPASS: Commenting out the TradeLogger block entirely
+    /*
     try {
         const tradeLogger = new TradeLogger();
         tradeLogger.printStatistics();
     } catch (e) {
-        logger.error("FATAL: Failed to initialize TradeLogger. Check fs/path/dependency issues.", e);
+        logger.error("FATAL: Failed to initialize TradeLogger.", e);
         process.exit(1);
     }
+    */
     
-    // 2. Start the API Server 
-    // The APIServer constructor is now minimal, preventing synchronous crashes.
+    // 2. Start the API Server
     try {
+        // The APIServer constructor is now also minimal (see below)
         apiServer.start();
-        // apiServerWithBase44.start();
+        
+        logger.info('SERVER STATUS: APIServer start command issued successfully. Check /health endpoint.');
     } catch (e) {
-        logger.error("FATAL: Failed to start APIServer. Check port/Express issues.", e);
+        // If this catch block executes, the failure is a fundamental Node/Express problem
+        logger.error("FATAL: Server failed to start due to configuration or port issues.", e);
         process.exit(1);
     }
-    
-    logger.info('Application startup complete. Backend URL should now be reachable.');
 }
 
 /**
- * Graceful shutdown handler.
+ * Graceful shutdown handler. (Remains the same)
  */
 function setupShutdown(): void {
     const handleShutdown = () => {
         logger.info('Initiating graceful server shutdown...');
-        
         apiServer.stop();
-        // apiServerWithBase44.stop(); 
-        // TODO: Add logic here to stop the tradingEngine, workers, etc.
-        
         process.exit(0);
     };
 
-    process.on('SIGTERM', handleShutdown); // Used by Railway/cloud platforms
+    process.on('SIGTERM', handleShutdown); 
     process.on('SIGINT', handleShutdown);
 }
 
