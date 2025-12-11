@@ -14,7 +14,6 @@ import logger from './src/utils/logger';
  * Main application initializer function.
  */
 function initializeApp(): void {
-    // This log confirms dotenv loaded successfully
     logger.info(`Massive Trading Engine Initializing... NODE_ENV: ${process.env.NODE_ENV || 'development'}`);
     
     // 1. Initialize and Print Statistics (wrapped in try/catch for stability)
