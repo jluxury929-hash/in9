@@ -22,7 +22,6 @@ class ApiServer {
 
         this.app.post('/trade', async (req: Request, res: Response) => {
             try {
-                // Example trade route logic
                 const tradeResult = await base44Connector.executeTrade(req.body);
                 res.status(200).json(tradeResult);
             } catch (error) {
@@ -33,7 +32,7 @@ class ApiServer {
     }
 
     public start(): void {
-        // FIX: Use process.env.PORT for cloud deployment, fallback to config.
+        // --- FIXED: Use process.env.PORT for cloud deployment ---
         const port = process.env.PORT || config.server.port;
         this.server = this.app.listen(port, () => {
             logger.info(`API Server listening on port ${port}`);
