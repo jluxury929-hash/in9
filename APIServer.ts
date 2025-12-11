@@ -19,7 +19,7 @@ export class APIServer {
         this.app = express();
         this.setupMiddleware();
         this.setupRoutes();
-        // WebSockets and Event Listeners remain bypassed for startup stability
+        // WebSockets and Events remain bypassed for startup stability
     }
 
     private setupMiddleware(): void {
