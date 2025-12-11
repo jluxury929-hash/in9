@@ -18,8 +18,7 @@ export class APIServer {
         this.setupMiddleware();
         this.setupRoutes();
         
-        // 🚨 FIX: TEMPORARILY BYPASS WEBSOCKETS AND EVENT LISTENERS
-        // These rely on global imports/config and are high-risk for synchronous failure.
+        // 🚨 FIX: TEMPORARILY BYPASS WEBSOCKETS AND EVENT LISTENERS in the constructor
         // this.setupWebSocket(); 
         // this.setupEventListeners(); 
     }
@@ -83,7 +82,23 @@ export class APIServer {
             }
         });
 
-        // ... (All other routes follow the dynamic import pattern similar to /api/start and /api/status)
+        // Start UHF engine - Uses Lazy Imports
+        this.app.post('/api/start-uhf', async (req: Request, res: Response) => {
+            try {
+                const { ultraHighFrequencyEngine } = await import('../engine/ultraHighFrequencyEngine');
+                const { autoWithdrawSystem } = await import('../profit/autoWithdraw');
+
+                await ultraHighFrequencyEngine.start();
+                autoWithdrawSystem.start(60);
+
+                res.json({ success: true, message: 'Ultra-high-frequency engine started', timestamp: Date.now() });
+            } catch (error) {
+                logger.error('Error starting UHF engine:', error);
+                res.status(500).json({ error: 'Failed to start UHF engine', detail: error.message });
+            }
+        });
+        
+        // ... (All other routes follow the dynamic import pattern) ...
 
         // Error handler (Remains the same)
         this.app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
@@ -99,8 +114,7 @@ export class APIServer {
     }
 
     private setupEventListeners(): void {
-        // Needs a globally available tradingEngine instance which is risky.
-        // tradingEngine.on('performance_update', (metrics) => { ... });
+        // ... (event listening logic)
     }
 
     private broadcast(message: any): void {
@@ -108,11 +122,14 @@ export class APIServer {
     }
 
     public start(): void {
-        // FIX: Use process.env.PORT for cloud deployment, fallback to config.
+        // FIX 1: Use process.env.PORT
         const port = process.env.PORT || config.server.port;
         
-        this.app.listen(port, () => {
-            logger.info(`API Server started on port ${port}`);
+        // 🚨 FIX 2: Explicitly bind to '0.0.0.0' for Bad Gateway (502) fix
+        const host = '0.0.0.0'; 
+        
+        this.app.listen(port, host, () => {
+            logger.info(`API Server started on host ${host} port ${port}`);
             logger.info(`Backend URL should be reachable via this port mapping.`);
         });
     }
