@@ -1,30 +1,38 @@
-// index.ts
+// index.ts (The Ultimate Debugger)
 
 // 🚨 CRITICAL FIX 1: Ensure environment variables are loaded FIRST.
 require('dotenv').config();
 
 import { apiServer } from './src/api/APIServer';
 import logger from './src/utils/logger'; 
-// import { TradeLogger } from './src/utils/tradeLogger'; // BYPASSED for stability
+// Note: TradeLogger is safely bypassed here for stability.
 
 function initializeApp(): void {
-    logger.info(`STARTUP: Attempting minimal server initialization.`);
+    logger.info(`[INIT STEP 1] STARTUP: Starting initialization sequence.`);
     
-    // --- BYPASS: TradeLogger initialization is skipped ---
+    // --- STEP 2: Initialize APIServer (which immediately imports config/logger) ---
+    // If the process crashes here, the error is in config.ts or logger.ts
+    try {
+        const server = apiServer; 
+        logger.info(`[INIT STEP 2] APIServer instantiated successfully.`);
+    } catch (e) {
+        logger.error(`[FATAL] APIServer instantiation failed. Check top-level imports in APIServer.ts.`, e);
+        process.exit(1);
+    }
     
-    // 2. Start the API Server
+    // --- STEP 3: Start the server and listen to the network ---
     try {
         apiServer.start();
-        
-        logger.info('SERVER STATUS: APIServer start command issued successfully. Check /health endpoint.');
+        logger.info(`[INIT STEP 3] SERVER STATUS: APIServer start command issued.`);
     } catch (e) {
-        logger.error("FATAL: Server failed to start due to configuration or port issues.", e);
+        // This is the last safety net against a failure to run the start method
+        logger.error("[FATAL] Server failed during start/listen execution.", e);
         process.exit(1);
     }
 }
 
 /**
- * Graceful shutdown handler. (Remains the same)
+ * Graceful shutdown handler.
  */
 function setupShutdown(): void {
     const handleShutdown = () => {
@@ -37,10 +45,5 @@ function setupShutdown(): void {
     process.on('SIGINT', handleShutdown);
 }
 
-// Execute the application entry function
-initializeApp();
-setupShutdown();
-
-// Execute the application entry function
 initializeApp();
 setupShutdown();
