@@ -26,6 +26,7 @@ function initializeApp(): void {
     }
     
     // 2. Start the API Server 
+    // The APIServer constructor is now minimal, preventing synchronous crashes.
     try {
         apiServer.start();
         // apiServerWithBase44.start();
