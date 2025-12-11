@@ -1,127 +1,53 @@
-import { ethers } from 'ethers';
-import { config } from './config';
-import logger from './utils/logger';
-import { FlashbotsMEVExecutor } from './mev/flashbots';
-import { MempoolMonitor, RawMEVOpportunity } from './mev/mempool';
+// index.ts
 
-class ProductionMEVBot {
-    private executor: FlashbotsMEVExecutor;
-    private mempool: MempoolMonitor;
-    private httpProvider: ethers.JsonRpcProvider;
-    private wallet: ethers.Wallet;
-    private resyncInterval: NodeJS.Timeout | null = null;
+import { apiServer } from './src/api/APIServer';
+import { TradeLogger } from './src/utils/tradeLogger';
+// Assuming logger exists in the same utility structure
+import logger from './src/utils/logger'; 
+// If you are using apiServerWithBase44, uncomment this import:
+// import { apiServerWithBase44 } from './src/api/apiServerWithBase44'; 
 
-    constructor() {
-        this.validateConfig();
+/**
+ * Main application initializer function.
+ */
+function initializeApp(): void {
+    logger.info('Massive Trading Engine Initializing...');
+    
+    // 1. Initialize and Print Statistics
+    const tradeLogger = new TradeLogger();
+    tradeLogger.printStatistics();
 
-        this.httpProvider = new ethers.JsonRpcProvider(config.ethereum.rpcHttp);
-        this.wallet = new ethers.Wallet(config.wallet.privateKey, this.httpProvider);
+    // 2. Start the API Server 
+    apiServer.start();
+    
+    // If running the placeholder server:
+    // apiServerWithBase44.start();
 
-        this.executor = new FlashbotsMEVExecutor(
-            config.ethereum.rpcHttp,
-            config.wallet.privateKey,
-            config.flashbots.relaySignerKey,
-            config.mev.helperContract,
-            config.mev.uniswapRouter,
-            config.mev.wethAddress
-        );
-
-        this.mempool = new MempoolMonitor(
-            config.ethereum.rpcWss,
-            config.mev.uniswapRouter,
-            config.mev.wethAddress,
-            0.1
-        );
-    }
-
-    private validateConfig(): void {
-        if (!config.wallet.privateKey || config.wallet.privateKey === 'your_private_key_here') {
-            throw new Error('WALLET_PRIVATE_KEY required');
-        }
-        if (!config.mev.helperContract) {
-            throw new Error('MEV_HELPER_CONTRACT_ADDRESS required - deploy contract first');
-        }
-    }
-
-    async start(): Promise<void> {
-        logger.info('='.repeat(70));
-        logger.info(' PRODUCTION MEV BOT - STARTING');
-        logger.info('='.repeat(70));
-
-        // Wait for balance
-        while (!(await this.checkBalance())) {
-            await new Promise(r => setTimeout(r, config.trading.checkBalanceInterval));
-        }
-
-        // Initialize Flashbots
-        await this.executor.initialize();
-
-        // Start mempool monitoring with callback
-        await this.mempool.start(async (opportunity: RawMEVOpportunity) => {
-            logger.info(` MEV OPPORTUNITY DETECTED`);
-            logger.info(`  Type: ${opportunity.type}`);
-            logger.info(`  Target: ${opportunity.targetTxHash.slice(0, 10)}...`);
-            logger.info(`  Amount: ${ethers.formatEther(opportunity.amountIn)} ETH`);
-            logger.info(`  Est. Profit: ${opportunity.estimatedProfitEth} ETH`);
-
-            // Execute sandwich
-            const success = await this.executor.executeSandwich(opportunity);
-           
-            if (success) {
-                logger.info(` PROFIT CAPTURED!`);
-                await this.withdrawProfits();
-            }
-        });
-
-        // Periodic nonce resync
-        this.resyncInterval = setInterval(async () => {
-            await this.executor.periodicResync();
-        }, 30000);
-
-        logger.info(' Bot fully operational');
-    }
-
-    async checkBalance(): Promise<boolean> {
-        const balance = await this.httpProvider.getBalance(this.wallet.address);
-        const balanceEth = parseFloat(ethers.formatEther(balance));
-
-        logger.info(`Balance: ${balanceEth.toFixed(6)} ETH`);
-
-        if (balanceEth >= config.wallet.minEthBalance) {
-            return true;
-        }
-
-        logger.info(`Waiting for ${config.wallet.minEthBalance} ETH...`);
-        return false;
-    }
-
-    async withdrawProfits(): Promise<void> {
-        try {
-            const balance = await this.httpProvider.getBalance(this.wallet.address);
-            const balanceEth = parseFloat(ethers.formatEther(balance));
-            const profitAmount = balanceEth - config.wallet.minEthBalance - config.wallet.gasReserveEth;
-
-            if (profitAmount > 0.001) {
-                logger.info(` Withdrawing ${profitAmount.toFixed(6)} ETH`);
-                const tx = await this.wallet.sendTransaction({
-                    to: config.wallet.profitAddress,
-                    value: ethers.parseEther(profitAmount.toFixed(18))
-                });
-                await tx.wait();
-                logger.info(` Withdrawal complete: ${tx.hash}`);
-            }
-        } catch (error) {
-            logger.error('Withdrawal failed:', error);
-        }
-    }
+    logger.info('Application startup complete. Ready to trade.');
 }
 
-(async () => {
-    try {
-        const bot = new ProductionMEVBot();
-        await bot.start();
-    } catch (error) {
-        logger.error('Fatal error during startup:', error);
-        process.exit(1);
-    }
-})();
+/**
+ * Graceful shutdown handler.
+ */
+function setupShutdown(): void {
+    const handleShutdown = () => {
+        logger.info('Initiating graceful server shutdown...');
+        
+        // Stops the main Express and WebSocket servers
+        apiServer.stop();
+        
+        // Stops the placeholder server if used
+        // apiServerWithBase44.stop(); 
+        
+        // TODO: Add logic here to stop the tradingEngine, workers, etc.
+        
+        process.exit(0);
+    };
+
+    process.on('SIGTERM', handleShutdown); // Used by Railway/cloud platforms
+    process.on('SIGINT', handleShutdown);
+}
+
+// Execute the application entry function
+initializeApp();
+setupShutdown();
