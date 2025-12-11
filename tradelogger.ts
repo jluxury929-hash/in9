@@ -1,5 +1,4 @@
 // src/utils/tradeLogger.ts
-
 import fs from 'fs';
 import path from 'path';
 import { ethers } from 'ethers';
@@ -169,7 +168,7 @@ export class TradeLogger {
         if (trade.netProfit) {
             const isProfit = parseFloat(trade.netProfit) > 0;
             console.log(isProfit 
-                ? chalk.green.bold(`   Net: +${trade.netProfit}`)
+                ? chalk.green.bold(`   Net: +${trade.netProfit}`) 
                 : chalk.red(`   Net: ${trade.netProfit}`)
             );
         }
