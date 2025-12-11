@@ -6,7 +6,12 @@ import { ethers } from 'ethers';
 import chalk from 'chalk';
 
 export interface TradeRecord {
-    // ... (Interface properties)
+    id: string;
+    timestamp: number;
+    blockNumber: number;
+    
+    status: 'pending' | 'success' | 'failed';
+    // ... (rest of interface properties)
 }
 
 export class TradeLogger {
